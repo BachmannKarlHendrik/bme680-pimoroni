@@ -122,11 +122,15 @@ void alarmSend(String message, bool finish) {
     command = "304,c8y_WarningAlarm,"+message;
     mqttClient.publish(TOPIC.c_str(), 0, false, command.c_str());
   }
-  while(finish) {
-    digitalWrite(LED_BUILTIN, HIGH);
-    delay(2500);
-    digitalWrite(LED_BUILTIN, LOW);
-    delay(2500);
+  if(finish) {
+    xTimerStop(mqttReconnectTimer, 0);
+    xTimerStop(wifiReconnectTimer, 0);
+    while(finish) {
+      digitalWrite(LED_BUILTIN, HIGH);
+      delay(2500);
+      digitalWrite(LED_BUILTIN, LOW);
+      delay(2500);
+    }
   }
 }
 
