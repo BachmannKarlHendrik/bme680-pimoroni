@@ -13,7 +13,7 @@ extern "C" {
 //Wifi info and debugging led
 int LED_BUILTIN = 2;
 
-String clientId = "KarliESP-PimoroniBme680-1";
+String clientId = "KarliESP-PimoroniBme680-2";
 String command = "";
 String TOPIC = "s/us";
 
@@ -123,8 +123,6 @@ void alarmSend(String message, bool finish) {
     mqttClient.publish(TOPIC.c_str(), 0, false, command.c_str());
   }
   if(finish) {
-    xTimerStop(mqttReconnectTimer, 0);
-    xTimerStop(wifiReconnectTimer, 0);
     while(finish) {
       digitalWrite(LED_BUILTIN, HIGH);
       delay(2500);
