@@ -16,7 +16,6 @@ int LED_BUILTIN = 2;
 String clientId = "KarliESP-PimoroniBme680-1";
 String command = "";
 String TOPIC = "s/us";
-unsigned long lastMsg = 0;
 
 AsyncMqttClient mqttClient;
 TimerHandle_t mqttReconnectTimer;
@@ -113,6 +112,24 @@ void onMqttPublish(uint16_t packetId) {
   Serial.println(packetId);
 }
 
+void alarmSend(String message, bool finish) {
+  Serial.println(message);
+  if(finish) {
+    command = "301,c8y_CriticalAlarm,"+message;
+    mqttClient.publish(TOPIC.c_str(), 0, false, command.c_str());
+  }
+  else {
+    command = "304,c8y_WarningAlarm,"+message;
+    mqttClient.publish(TOPIC.c_str(), 0, false, command.c_str());
+  }
+  while(finish) {
+    digitalWrite(LED_BUILTIN, HIGH);
+    delay(2500);
+    digitalWrite(LED_BUILTIN, LOW);
+    delay(2500);
+  }
+}
+
 // Helper function definitions
 void checkIaqSensorStatus(void)
 {
@@ -120,27 +137,23 @@ void checkIaqSensorStatus(void)
     if (iaqSensor.status < BSEC_OK) {
       output = "BSEC error code : " + String(iaqSensor.status);
       Serial.println(output);
+      alarmSend(output,true);
     } else {
       output = "BSEC warning code : " + String(iaqSensor.status);
       Serial.println(output);
+      alarmSend(output,false);
     }
   }
-
   if (iaqSensor.bme680Status != BME680_OK) {
     if (iaqSensor.bme680Status < BME680_OK) {
       output = "BME680 error code : " + String(iaqSensor.bme680Status);
       Serial.println(output);
+      alarmSend(output,true);
     } else {
       output = "BME680 warning code : " + String(iaqSensor.bme680Status);
       Serial.println(output);
+      alarmSend(output,false);
     }
-  }
-
-  while(true) {
-    digitalWrite(LED_BUILTIN, HIGH);
-    delay(2500);
-    digitalWrite(LED_BUILTIN, LOW);
-    delay(2500);
   }
 }
 
@@ -201,32 +214,28 @@ void setup() {
 }
 
 void loop() {
-  unsigned long now = millis();
-  if (now - lastMsg > 5000) { // Wait 5 seconds between every request
-    if (iaqSensor.run()) { // If new data is available
-      lastMsg = now;
-      output = String(iaqSensor.pressure);
-      output += ", " + String(iaqSensor.iaq);
-      output += ", " + String(iaqSensor.temperature);
-      output += ", " + String(iaqSensor.humidity);
-      output += ", " + String(iaqSensor.co2Equivalent);
-      output += ", " + String(iaqSensor.breathVocEquivalent);
-      Serial.println(output);
-      command = "200,pressureMeasurement,hecto pascals,"+String(iaqSensor.pressure)+",hPa";
-      mqttClient.publish(TOPIC.c_str(), 0, false, command.c_str());
-      command = "200,iaqMeasurement,indoor air quality,"+String(iaqSensor.iaq)+",iaq";
-      mqttClient.publish(TOPIC.c_str(), 0, false, command.c_str());
-      command = "211,"+String(iaqSensor.temperature);
-      mqttClient.publish(TOPIC.c_str(), 0, false, command.c_str());
-      command = "200,humidityMeasurement,percent,"+String(iaqSensor.humidity)+",%";
-      mqttClient.publish(TOPIC.c_str(), 0, false, command.c_str());
-      command = "200,eco2Measurement,particles per million,"+String(iaqSensor.co2Equivalent)+",ppm";
-      mqttClient.publish(TOPIC.c_str(), 0, false, command.c_str());
-      command = "200,ebvoc,particles per million,"+String(iaqSensor.breathVocEquivalent)+",ppm";
-      mqttClient.publish(TOPIC.c_str(), 0, false, command.c_str());
-    }
-    else {
-      checkIaqSensorStatus();
-    }
+  if (iaqSensor.run()) { // If new data is available
+    output = String(iaqSensor.pressure);
+    output += ", " + String(iaqSensor.iaq);
+    output += ", " + String(iaqSensor.temperature);
+    output += ", " + String(iaqSensor.humidity);
+    output += ", " + String(iaqSensor.co2Equivalent);
+    output += ", " + String(iaqSensor.breathVocEquivalent);
+    Serial.println(output);
+    command = "200,pressureMeasurement,hecto pascals,"+String(iaqSensor.pressure)+",hPa";
+    mqttClient.publish(TOPIC.c_str(), 0, false, command.c_str());
+    command = "200,iaqMeasurement,indoor air quality,"+String(iaqSensor.iaq)+",iaq";
+    mqttClient.publish(TOPIC.c_str(), 0, false, command.c_str());
+    command = "211,"+String(iaqSensor.temperature);
+    mqttClient.publish(TOPIC.c_str(), 0, false, command.c_str());
+    command = "200,humidityMeasurement,percent,"+String(iaqSensor.humidity)+",%";
+    mqttClient.publish(TOPIC.c_str(), 0, false, command.c_str());
+    command = "200,eco2Measurement,particles per million,"+String(iaqSensor.co2Equivalent)+",ppm";
+    mqttClient.publish(TOPIC.c_str(), 0, false, command.c_str());
+    command = "200,ebvoc,particles per million,"+String(iaqSensor.breathVocEquivalent)+",ppm";
+    mqttClient.publish(TOPIC.c_str(), 0, false, command.c_str());
+  }
+  else {
+    checkIaqSensorStatus();
   }
 }
